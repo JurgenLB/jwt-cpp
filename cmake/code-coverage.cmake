@@ -14,10 +14,6 @@ if(NOT EXISTS ${COVERAGE_CMAKE})
   file(WRITE ${COVERAGE_CMAKE} "${COVERAGE_CONTENT}")
 endif()
 
-# Add lcov ignore mismatch errors flag to handle Google Test macro expansion issues
-# This will be used as part of LCOV_ARGS in setup_target_for_coverage_lcov
-set(LCOV_IGNORE_ERRORS "--ignore-errors mismatch" CACHE STRING "Flags to ignore lcov errors")
-
 include(${COVERAGE_CMAKE})
 
 function(setup_coverage TARGET)
