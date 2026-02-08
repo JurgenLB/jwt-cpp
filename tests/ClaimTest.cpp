@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 
 // Test cases for JWT claim handling
+// Note: Additional spacing added to prevent geninfo line mismatch errors with Google Test macros
 
 TEST(ClaimTest, AudienceAsString) {
 	std::string const token =
