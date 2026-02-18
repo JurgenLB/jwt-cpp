@@ -1677,7 +1677,12 @@ namespace jwt {
 #else
 				const unsigned char* der_sig_data = reinterpret_cast<const unsigned char*>(der_signature.data());
 #endif
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+				auto res = EVP_DigestVerifyFinal(ctx.get(), der_sig_data,
+												 static_cast<unsigned int>(der_signature.length()));
+#else
 				auto res = EVP_DigestVerifyFinal(ctx.get(), der_sig_data, der_signature.length());
+#endif
 				if (res == 0) {
 					ec = error::signature_verification_error::invalid_signature;
 					return;
@@ -1903,15 +1908,26 @@ namespace jwt {
 					ec = error::signature_verification_error::verifyupdate_failed;
 					return;
 				}
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+				if (EVP_DigestVerifyFinal(ctx.get(), reinterpret_cast<const unsigned char*>(signature.data()),
+										  static_cast<unsigned int>(signature.size())) != 1) {
+#else
 				if (EVP_DigestVerifyFinal(ctx.get(), reinterpret_cast<const unsigned char*>(signature.data()),
 										  signature.size()) != 1) {
+#endif
 					ec = error::signature_verification_error::verifyfinal_failed;
 					return;
 				}
 #else
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+				auto res = EVP_DigestVerify(ctx.get(), reinterpret_cast<const unsigned char*>(signature.data()),
+											static_cast<unsigned int>(signature.size()),
+											reinterpret_cast<const unsigned char*>(data.data()), data.size());
+#else
 				auto res = EVP_DigestVerify(ctx.get(), reinterpret_cast<const unsigned char*>(signature.data()),
 											signature.size(), reinterpret_cast<const unsigned char*>(data.data()),
 											data.size());
+#endif
 				if (res != 1) {
 					ec = error::signature_verification_error::verifyfinal_failed;
 					return;
@@ -2039,7 +2055,12 @@ namespace jwt {
 					return;
 				}
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+				if (EVP_DigestVerifyFinal(md_ctx.get(), (unsigned char*)signature.data(),
+										  static_cast<unsigned int>(signature.size())) <= 0) {
+#else
 				if (EVP_DigestVerifyFinal(md_ctx.get(), (unsigned char*)signature.data(), signature.size()) <= 0) {
+#endif
 					ec = error::signature_verification_error::verifyfinal_failed;
 					return;
 				}
