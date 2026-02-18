@@ -318,4 +318,3 @@ build/*
 package-lock.json
 
 CMakeUserPresets.json
-_codeql_build_dir/
