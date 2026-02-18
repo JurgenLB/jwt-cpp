@@ -1679,8 +1679,8 @@ namespace jwt {
 #endif
 // For OpenSSL 1.0.x, signature length parameter is unsigned int
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-				auto res = EVP_DigestVerifyFinal(ctx.get(), der_sig_data,
-												 static_cast<unsigned int>(der_signature.length()));
+				auto res =
+					EVP_DigestVerifyFinal(ctx.get(), der_sig_data, static_cast<unsigned int>(der_signature.length()));
 #else
 				auto res = EVP_DigestVerifyFinal(ctx.get(), der_sig_data, der_signature.length());
 #endif
