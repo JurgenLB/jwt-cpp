@@ -1677,6 +1677,7 @@ namespace jwt {
 #else
 				const unsigned char* der_sig_data = reinterpret_cast<const unsigned char*>(der_signature.data());
 #endif
+// For OpenSSL 1.0.x, signature length parameter is unsigned int
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 				auto res = EVP_DigestVerifyFinal(ctx.get(), der_sig_data,
 												 static_cast<unsigned int>(der_signature.length()));
@@ -1908,6 +1909,7 @@ namespace jwt {
 					ec = error::signature_verification_error::verifyupdate_failed;
 					return;
 				}
+// For OpenSSL 1.0.x, signature length parameter is unsigned int
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 				if (EVP_DigestVerifyFinal(ctx.get(), reinterpret_cast<const unsigned char*>(signature.data()),
 										  static_cast<unsigned int>(signature.size())) != 1) {
@@ -1918,7 +1920,8 @@ namespace jwt {
 					ec = error::signature_verification_error::verifyfinal_failed;
 					return;
 				}
-#else
+#else // !LIBWOLFSSL_VERSION_HEX (OpenSSL/LibreSSL)
+// For OpenSSL 1.0.x, signature length parameter is unsigned int
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 				auto res = EVP_DigestVerify(ctx.get(), reinterpret_cast<const unsigned char*>(signature.data()),
 											static_cast<unsigned int>(signature.size()),
@@ -2055,6 +2058,7 @@ namespace jwt {
 					return;
 				}
 
+// For OpenSSL 1.0.x, signature length parameter is unsigned int
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 				if (EVP_DigestVerifyFinal(md_ctx.get(), (unsigned char*)signature.data(),
 										  static_cast<unsigned int>(signature.size())) <= 0) {
