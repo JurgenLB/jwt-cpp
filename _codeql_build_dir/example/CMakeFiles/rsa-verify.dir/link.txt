@@ -1,0 +1,1 @@
+/home/runner/work/jwt-cpp/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++ -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/rsa-verify.dir/link.d "CMakeFiles/rsa-verify.dir/rsa-verify.cpp.o" -o rsa-verify  /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/x86_64-linux-gnu/libcrypto.so
