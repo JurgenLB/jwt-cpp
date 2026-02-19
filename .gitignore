@@ -315,6 +315,7 @@ test
 .cache
 
 build/*
+_codeql_build_dir/*
 package-lock.json
 
 CMakeUserPresets.json
