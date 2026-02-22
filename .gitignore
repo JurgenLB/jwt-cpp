@@ -319,3 +319,8 @@ package-lock.json
 
 CMakeUserPresets.json
 cmake/FindLibreSSL.cmake
+
+# CodeQL build artifacts
+_codeql_build_dir/
+_codeql_detected_source_root
+*.gch
