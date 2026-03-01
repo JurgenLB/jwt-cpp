@@ -2,10 +2,18 @@
 #define JWT_CPP_JWT_H
 
 #ifndef JWT_DISABLE_PICOJSON
+#ifdef picojson_h
+// picojson was already included before jwt.h; verify int64_t support is available
+#ifndef PICOJSON_USE_INT64
+#error "picojson was included without PICOJSON_USE_INT64 defined. jwt-cpp requires int64_t support. Please define PICOJSON_USE_INT64 before including picojson.h, or include jwt-cpp/jwt.h before picojson.h."
+#endif
+#else
+// Include picojson with int64_t support enabled
 #ifndef PICOJSON_USE_INT64
 #define PICOJSON_USE_INT64
 #endif
 #include "picojson/picojson.h"
+#endif
 #endif
 
 #ifndef JWT_DISABLE_BASE64

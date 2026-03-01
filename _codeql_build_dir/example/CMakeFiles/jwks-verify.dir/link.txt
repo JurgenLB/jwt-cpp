@@ -1,0 +1,1 @@
+/tmp/codeql-scratch-789308f2aa91db03/dbs/cpp/working/autobuild/bin/c++ -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/jwks-verify.dir/link.d "CMakeFiles/jwks-verify.dir/jwks-verify.cpp.o" -o jwks-verify  /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/x86_64-linux-gnu/libcrypto.so
