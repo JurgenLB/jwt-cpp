@@ -4,7 +4,8 @@
 #ifdef picojson_h
 // picojson was already included before this traits header; verify int64_t support is available
 #ifndef PICOJSON_USE_INT64
-#error "picojson was included without PICOJSON_USE_INT64 defined. jwt-cpp requires int64_t support. Please define PICOJSON_USE_INT64 before including picojson.h, or include this traits header before picojson.h."
+#error                                                                                                                 \
+	"picojson was included without PICOJSON_USE_INT64 defined. jwt-cpp requires int64_t support. Please define PICOJSON_USE_INT64 before including picojson.h, or include this traits header before picojson.h."
 #endif
 #else
 // Include picojson with int64_t support enabled
