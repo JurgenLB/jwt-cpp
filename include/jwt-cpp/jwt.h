@@ -65,9 +65,7 @@
 #endif
 
 #if defined(LIBRESSL_VERSION_NUMBER)
-#if LIBRESSL_VERSION_NUMBER >= 0x3070100fL // 3.7.1 - EdDSA support
-#define JWT_OPENSSL_1_1_1
-#elif LIBRESSL_VERSION_NUMBER >= 0x3050300fL // 3.5.3
+#if LIBRESSL_VERSION_NUMBER >= 0x3050300fL
 #define JWT_OPENSSL_1_1_0
 #else
 #define JWT_OPENSSL_1_0_0
@@ -854,7 +852,7 @@ namespace jwt {
 			bn2raw(const BIGNUM* bn)
 #endif
 		{
-			std::string res(static_cast<size_t>(BN_num_bytes(bn)), '\0');
+			std::string res(BN_num_bytes(bn), '\0');
 			BN_bn2bin(bn, (unsigned char*)res.data()); // NOLINT(google-readability-casting) requires `const_cast`
 			return res;
 		}
@@ -1411,7 +1409,7 @@ namespace jwt {
 				std::string res(static_cast<size_t>(EVP_MAX_MD_SIZE), '\0');
 				auto len = static_cast<unsigned int>(res.size());
 				if (HMAC(md(), secret.data(), static_cast<int>(secret.size()),
-						 reinterpret_cast<const unsigned char*>(data.data()), data.size(),
+						 reinterpret_cast<const unsigned char*>(data.data()), static_cast<int>(data.size()),
 						 (unsigned char*)res.data(), // NOLINT(google-readability-casting) requires `const_cast`
 						 &len) == nullptr) {
 					ec = error::signature_generation_error::hmac_failed;
@@ -1509,7 +1507,7 @@ namespace jwt {
 					return {};
 				}
 
-				std::string res(static_cast<size_t>(EVP_PKEY_size(pkey.get())), '\0');
+				std::string res(EVP_PKEY_size(pkey.get()), '\0');
 				unsigned int len = 0;
 
 				if (!EVP_SignUpdate(ctx.get(), data.data(), data.size())) {
@@ -1546,9 +1544,8 @@ namespace jwt {
 					ec = error::signature_verification_error::verifyupdate_failed;
 					return;
 				}
-				const unsigned int sig_size = static_cast<unsigned int>(signature.size());
 				auto res = EVP_VerifyFinal(ctx.get(), reinterpret_cast<const unsigned char*>(signature.data()),
-										   sig_size, pkey.get());
+										   static_cast<unsigned int>(signature.size()), pkey.get());
 				if (res != 1) {
 					ec = error::signature_verification_error::verifyfinal_failed;
 					return;
@@ -1597,7 +1594,7 @@ namespace jwt {
 				}
 				if (!pkey) throw error::ecdsa_exception(error::ecdsa_error::invalid_key);
 
-				size_t keysize = static_cast<size_t>(EVP_PKEY_bits(pkey.get()));
+				size_t keysize = EVP_PKEY_bits(pkey.get());
 				if (keysize != signature_length * 4 && (signature_length != 132 || keysize != 521))
 					throw error::ecdsa_exception(error::ecdsa_error::invalid_key_size);
 			}
@@ -1613,7 +1610,7 @@ namespace jwt {
 			ecdsa(helper::evp_pkey_handle key_pair, const EVP_MD* (*md)(), std::string name, size_t siglen)
 				: pkey(std::move(key_pair)), md(md), alg_name(std::move(name)), signature_length(siglen) {
 				if (!pkey) { throw error::ecdsa_exception(error::ecdsa_error::no_key_provided); }
-				size_t keysize = static_cast<size_t>(EVP_PKEY_bits(pkey.get()));
+				size_t keysize = EVP_PKEY_bits(pkey.get());
 				if (keysize != signature_length * 4 && (signature_length != 132 || keysize != 521))
 					throw error::ecdsa_exception(error::ecdsa_error::invalid_key_size);
 			}
@@ -1788,14 +1785,14 @@ namespace jwt {
 					ec = error::signature_verification_error::signature_encoding_failed;
 					return {};
 				}
-				std::string der_signature(static_cast<size_t>(length), '\0');
+				std::string der_signature(length, '\0');
 				unsigned char* psbuffer = (unsigned char*)der_signature.data();
 				length = i2d_ECDSA_SIG(psig, &psbuffer);
 				if (length < 0) {
 					ec = error::signature_verification_error::signature_encoding_failed;
 					return {};
 				}
-				der_signature.resize(static_cast<size_t>(length));
+				der_signature.resize(length);
 				return der_signature;
 			}
 
@@ -1817,7 +1814,6 @@ namespace jwt {
 		 *
 		 * The EdDSA algorithms were introduced in [OpenSSL v1.1.1](https://www.openssl.org/news/openssl-1.1.1-notes.html),
 		 * so these algorithms are only available when building against this version or higher.
-		 * LibreSSL added EdDSA (Ed25519) functionality in [LibreSSL 3.7.1](https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.7.1-relnotes.txt)
 		 */
 		struct eddsa {
 			/**
@@ -1858,12 +1854,13 @@ namespace jwt {
 					return {};
 				}
 
-				size_t len = static_cast<size_t>(EVP_PKEY_size(pkey.get()));
+				size_t len = EVP_PKEY_size(pkey.get());
 				std::string res(len, '\0');
 
-// LibreSSL and OpenSSL, require the oneshot EVP_DigestSign API.
-// wolfSSL uses the Update/Final pattern.
-#if defined(LIBWOLFSSL_VERSION_HEX)
+// LibreSSL is the special kid in the block, as it does not support EVP_DigestSign.
+// OpenSSL on the otherhand does not support using EVP_DigestSignUpdate for eddsa, which is why we end up with this
+// mess.
+#if defined(LIBRESSL_VERSION_NUMBER) || defined(LIBWOLFSSL_VERSION_HEX)
 				ERR_clear_error();
 				if (EVP_DigestSignUpdate(ctx.get(), reinterpret_cast<const unsigned char*>(data.data()), data.size()) !=
 					1) {
@@ -1904,23 +1901,24 @@ namespace jwt {
 					ec = error::signature_verification_error::verifyinit_failed;
 					return;
 				}
-// LibreSSL and OpenSSL, require the oneshot EVP_DigestVerify API.
-// wolfSSL uses the Update/Final pattern.
-#if defined(LIBWOLFSSL_VERSION_HEX)
+// LibreSSL is the special kid in the block, as it does not support EVP_DigestVerify.
+// OpenSSL on the otherhand does not support using EVP_DigestVerifyUpdate for eddsa, which is why we end up with this
+// mess.
+#if defined(LIBRESSL_VERSION_NUMBER) || defined(LIBWOLFSSL_VERSION_HEX)
 				if (EVP_DigestVerifyUpdate(ctx.get(), reinterpret_cast<const unsigned char*>(data.data()),
 										   data.size()) != 1) {
 					ec = error::signature_verification_error::verifyupdate_failed;
 					return;
 				}
 				if (EVP_DigestVerifyFinal(ctx.get(), reinterpret_cast<const unsigned char*>(signature.data()),
-										  static_cast<unsigned int>(signature.size())) != 1) {
+										  signature.size()) != 1) {
 					ec = error::signature_verification_error::verifyfinal_failed;
 					return;
 				}
-#else // !LIBWOLFSSL_VERSION_HEX (OpenSSL/LibreSSL)
+#else
 				auto res = EVP_DigestVerify(ctx.get(), reinterpret_cast<const unsigned char*>(signature.data()),
-											static_cast<unsigned int>(signature.size()),
-											reinterpret_cast<const unsigned char*>(data.data()), data.size());
+											signature.size(), reinterpret_cast<const unsigned char*>(data.data()),
+											data.size());
 				if (res != 1) {
 					ec = error::signature_verification_error::verifyfinal_failed;
 					return;
@@ -1999,7 +1997,7 @@ namespace jwt {
 					return {};
 				}
 
-				size_t size = static_cast<size_t>(EVP_PKEY_size(pkey.get()));
+				size_t size = EVP_PKEY_size(pkey.get());
 				std::string res(size, 0x00);
 				if (EVP_DigestSignFinal(
 						md_ctx.get(),
@@ -2048,8 +2046,7 @@ namespace jwt {
 					return;
 				}
 
-				if (EVP_DigestVerifyFinal(md_ctx.get(), (unsigned char*)signature.data(),
-										  static_cast<unsigned int>(signature.size())) <= 0) {
+				if (EVP_DigestVerifyFinal(md_ctx.get(), (unsigned char*)signature.data(), signature.size()) <= 0) {
 					ec = error::signature_verification_error::verifyfinal_failed;
 					return;
 				}
@@ -2221,7 +2218,7 @@ namespace jwt {
 		 *
 		 * https://en.wikipedia.org/wiki/EdDSA#Ed25519
 		 *
-		 * Requires at least OpenSSL 1.1.1 or LibreSSL 3.7.1.
+		 * Requires at least OpenSSL 1.1.1.
 		 */
 		struct ed25519 : public eddsa {
 			/**
@@ -2238,13 +2235,12 @@ namespace jwt {
 				: eddsa(public_key, private_key, public_key_password, private_key_password, "EdDSA") {}
 		};
 
-#if !defined(LIBRESSL_VERSION_NUMBER)
 		/**
 		 * Ed448 algorithm
 		 *
 		 * https://en.wikipedia.org/wiki/EdDSA#Ed448
 		 *
-		 * Requires at least OpenSSL 1.1.1. Note: Not supported by LibreSSL.
+		 * Requires at least OpenSSL 1.1.1.
 		 */
 		struct ed448 : public eddsa {
 			/**
@@ -2260,8 +2256,7 @@ namespace jwt {
 						   const std::string& public_key_password = "", const std::string& private_key_password = "")
 				: eddsa(public_key, private_key, public_key_password, private_key_password, "EdDSA") {}
 		};
-#endif // !LIBRESSL_VERSION_NUMBER
-#endif // !JWT_OPENSSL_1_0_0 && !JWT_OPENSSL_1_1_0
+#endif
 
 		/**
 		 * PS256 algorithm
@@ -2520,15 +2515,13 @@ namespace jwt {
 
 		template<typename string_type, typename integer_type>
 		using is_substr_start_end_index_signature =
-			typename std::is_same<decltype(std::declval<string_type>().substr(
-									  static_cast<size_t>(std::declval<integer_type>()),
-									  static_cast<size_t>(std::declval<integer_type>()))),
+			typename std::is_same<decltype(std::declval<string_type>().substr(std::declval<integer_type>(),
+																			  std::declval<integer_type>())),
 								  string_type>;
 
 		template<typename string_type, typename integer_type>
 		using is_substr_start_index_signature =
-			typename std::is_same<decltype(std::declval<string_type>().substr(
-									  static_cast<size_t>(std::declval<integer_type>()))),
+			typename std::is_same<decltype(std::declval<string_type>().substr(std::declval<integer_type>())),
 								  string_type>;
 
 		template<typename string_type>
@@ -2685,8 +2678,7 @@ namespace jwt {
 		 */
 		date as_date() const {
 			using std::chrono::system_clock;
-			if (get_type() == json::type::number)
-				return date(std::chrono::seconds(static_cast<int64_t>(std::llround(as_number()))));
+			if (get_type() == json::type::number) return date(std::chrono::seconds(std::llround(as_number())));
 			return date(std::chrono::seconds(as_integer()));
 		}
 
@@ -3579,7 +3571,7 @@ namespace jwt {
 
 				while (in_next != in_end) {
 					wchar_t wc;
-					std::size_t result = std::mbrtowc(&wc, in_next, static_cast<size_t>(in_end - in_next), &state);
+					std::size_t result = std::mbrtowc(&wc, in_next, in_end - in_next, &state);
 					if (result == static_cast<std::size_t>(-1)) {
 						throw std::runtime_error("encoding error: " + std::string(std::strerror(errno)));
 					} else if (result == static_cast<std::size_t>(-2)) {
