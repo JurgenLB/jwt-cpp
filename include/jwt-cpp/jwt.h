@@ -724,23 +724,13 @@ namespace jwt {
 			if (key.substr(0, 27) == "-----BEGIN CERTIFICATE-----") {
 				auto epkey = helper::extract_pubkey_from_cert<error_category>(key, password, ec);
 				if (ec) return {};
-				// Ensure the size fits into an int before casting
-				if (epkey.size() > static_cast<std::size_t>((std::numeric_limits<int>::max)())) {
-					ec = error_category::load_key_bio_write; // Add an appropriate error here
-					return {};
-				}
-				int len = static_cast<int>(epkey.size());
+				const int len = static_cast<int>(epkey.size());
 				if (BIO_write(pubkey_bio.get(), epkey.data(), len) != len) {
 					ec = error_category::load_key_bio_write;
 					return {};
 				}
 			} else {
-				// Ensure the size fits into an int before casting
-				if (key.size() > static_cast<std::size_t>((std::numeric_limits<int>::max)())) {
-					ec = error_category::load_key_bio_write; // Add an appropriate error here
-					return {};
-				}
-				int len = static_cast<int>(key.size());
+				const int len = static_cast<int>(key.size());
 				if (BIO_write(pubkey_bio.get(), key.data(), len) != len) {
 					ec = error_category::load_key_bio_write;
 					return {};
@@ -1626,7 +1616,7 @@ namespace jwt {
 					ec = error::signature_generation_error::signinit_failed;
 					return {};
 				}
-				if (!EVP_DigestUpdate(ctx.get(), data.data(), static_cast<unsigned int>(data.size()))) {
+				if (!EVP_DigestUpdate(ctx.get(), data.data(), data.size())) {
 					ec = error::signature_generation_error::digestupdate_failed;
 					return {};
 				}
@@ -1666,7 +1656,7 @@ namespace jwt {
 					ec = error::signature_verification_error::verifyinit_failed;
 					return;
 				}
-				if (!EVP_DigestUpdate(ctx.get(), data.data(), static_cast<unsigned int>(data.size()))) {
+				if (!EVP_DigestUpdate(ctx.get(), data.data(), data.size())) {
 					ec = error::signature_verification_error::verifyupdate_failed;
 					return;
 				}
@@ -1985,7 +1975,7 @@ namespace jwt {
 					return {};
 				}
 #endif
-				if (EVP_DigestUpdate(md_ctx.get(), data.data(), static_cast<unsigned int>(data.size())) != 1) {
+				if (EVP_DigestUpdate(md_ctx.get(), data.data(), data.size()) != 1) {
 					ec = error::signature_generation_error::digestupdate_failed;
 					return {};
 				}
@@ -2034,7 +2024,7 @@ namespace jwt {
 					return;
 				}
 #endif
-				if (EVP_DigestUpdate(md_ctx.get(), data.data(), static_cast<unsigned int>(data.size())) != 1) {
+				if (EVP_DigestUpdate(md_ctx.get(), data.data(), data.size()) != 1) {
 					ec = error::signature_verification_error::verifyupdate_failed;
 					return;
 				}
@@ -2510,15 +2500,13 @@ namespace jwt {
 
 		template<typename string_type, typename integer_type>
 		using is_substr_start_end_index_signature =
-			typename std::is_same<decltype(std::declval<string_type>().substr(
-									  static_cast<size_t>(std::declval<integer_type>()),
-									  static_cast<size_t>(std::declval<integer_type>()))),
+			typename std::is_same<decltype(std::declval<string_type>().substr(std::declval<integer_type>(),
+									  std::declval<integer_type>())),
 								  string_type>;
 
 		template<typename string_type, typename integer_type>
 		using is_substr_start_index_signature =
-			typename std::is_same<decltype(std::declval<string_type>().substr(
-									  static_cast<size_t>(std::declval<integer_type>()))),
+			typename std::is_same<decltype(std::declval<string_type>().substr(std::declval<integer_type>())),
 								  string_type>;
 
 		template<typename string_type>
@@ -2675,8 +2663,7 @@ namespace jwt {
 		 */
 		date as_date() const {
 			using std::chrono::system_clock;
-			if (get_type() == json::type::number)
-				return date(std::chrono::seconds(static_cast<int64_t>(std::llround(as_number()))));
+			if (get_type() == json::type::number) return date(std::chrono::seconds(std::llround(as_number())));
 			return date(std::chrono::seconds(as_integer()));
 		}
 
