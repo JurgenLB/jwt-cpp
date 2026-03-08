@@ -2514,7 +2514,7 @@ namespace jwt {
 		using is_substr_start_end_index_signature =
 			typename std::is_same<decltype(std::declval<string_type>().substr(
 									  static_cast<std::size_t>(std::declval<integer_type>()),
-                                      static_cast<std::size_t>(std::declval<integer_type>()))),
+									  static_cast<std::size_t>(std::declval<integer_type>()))),
 								  string_type>;
 
 		template<typename string_type, typename integer_type>
@@ -2677,8 +2677,7 @@ namespace jwt {
 		 */
 		date as_date() const {
 			using std::chrono::system_clock;
-			if (get_type() == json::type::number)
-				return date(std::chrono::seconds(std::llround(as_number())));
+			if (get_type() == json::type::number) return date(std::chrono::seconds(std::llround(as_number())));
 			return date(std::chrono::seconds(as_integer()));
 		}
 
